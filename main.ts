@@ -21,10 +21,25 @@ class App {
 			folder = this.folder;
 		console.log('Compressing folder:', this.folder);
 		const files = Deno.readDir(this.folder);
-		for await (const file of files) {
-			if (file.isFile) {
-				console.log('Compressing file:', file.name);
-				//new Deno.Command(this.pngCrushPath);
+		for await (const fileName of files) {
+			if (fileName.isFile && fileName.name.toLowerCase().endsWith('.png')) {
+				const filePath = this.folder + '/' + fileName.name;
+				const postfix = (Math.random() * 999_999).toFixed();
+				const outputFilePath = filePath + '.' + postfix;
+				console.log('Compressing file:', filePath);
+				const output = new Deno.Command(this.pngCrushPath,
+					{ args: [filePath, outputFilePath] }
+				).outputSync();
+				if (output.code === 0) {
+					const fileSizeBefore = Deno.statSync(filePath).size;
+					const fileSizeAfter = Deno.statSync(outputFilePath).size;
+					const ratio = fileSizeAfter / fileSizeBefore;
+					console.log('\tdone', (ratio * 100).toFixed(1) + '%');
+				} else {
+					console.error('Failed:', fileName.name, '=>', output.code,
+						'\n', new TextDecoder().decode(output.stdout),
+						'\n', new TextDecoder().decode(output.stderr));
+				}
 			}
 		}
 	}
