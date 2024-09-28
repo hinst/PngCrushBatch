@@ -1,0 +1,5 @@
+{
+	"tasks": {
+		"start": "deno run --env --allow-read=. --allow-env=PNG_CRUSH_PATH --allow-read=C:/App/PngCrush main.ts"
+	}
+}
