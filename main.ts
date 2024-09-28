@@ -45,7 +45,7 @@ class App {
 	}
 
 	private saveCache() {
-		Deno.writeTextFileSync(this.cacheFilePath, JSON.stringify(this.cache));
+		Deno.writeTextFileSync(this.cacheFilePath, JSON.stringify(this.cache, null, '\t'));
 	}
 
 	private async compressFolder(folder?: string) {
@@ -72,13 +72,14 @@ class App {
 		const postfix = (Math.random() * 999_999).toFixed();
 		const outputFilePath = filePath + '.' + postfix;
 		const output = new Deno.Command(this.pngCrushPath,
-			{ args: ['-new', '-brute', filePath, outputFilePath] }
+			{ args: [filePath, outputFilePath] }
 		).outputSync();
 		if (output.code === 0) {
 			const fileSizeAfter = Deno.statSync(outputFilePath).size;
 			this.totalSizeBefore += fileSizeBefore;
 			this.totalSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
+			this.cache[filePath] = fileSizeBefore;
 			console.log('\tdone', (ratio * 100).toFixed(1) + '%');
 		} else
 			console.error('Failed:', filePath, '=>', output.code,
