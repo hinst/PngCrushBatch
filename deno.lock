@@ -7,5 +7,8 @@
     "@std/dotenv@0.225.2": {
       "integrity": "e2025dce4de6c7bca21dece8baddd4262b09d5187217e231b033e088e0c4dd23"
     }
+  },
+  "remote": {
+    "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts": "f1d59ab40530f640694833c61d68c892692e7f5db8f00dbdbe9f4fdcf52112a9"
   }
 }
