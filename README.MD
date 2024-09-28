@@ -5,3 +5,7 @@ Tests:
     * Before:
         * Folder size: 712 MB
         * File count: 536
+    * After:
+        * Folder size: 576 MB
+        * File count: 536
+    * Size reduction: 20%

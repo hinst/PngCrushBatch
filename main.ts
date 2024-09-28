@@ -40,7 +40,7 @@ class App {
 	async run() {
 		console.time('Total time');
 		this.loadCache();
-		await this.compressFolder();
+		await this.compressFolder(this.folder);
 		console.timeEnd('Total time');
 		console.log('Total size');
 		console.log('  Before:', prettyBytes(this.totalSizeBefore));
@@ -64,15 +64,13 @@ class App {
 		Deno.writeTextFileSync(this.cacheFilePath, JSON.stringify(this.cache, null, '\t'));
 	}
 
-	private async compressFolder(folder?: string) {
-		if (!folder)
-			folder = this.folder;
-		console.log('Compressing folder:', this.folder);
-		const files = Deno.readDir(this.folder);
+	private async compressFolder(folder: string) {
+		console.log('Compressing folder:', folder);
+		const files = Deno.readDir(folder);
 		let skippedCount = 0;
-		for await (const fileName of files) {
-			if (fileName.isFile && fileName.name.toLowerCase().endsWith('.png')) {
-				const filePath = this.folder + '/' + fileName.name;
+		for await (const fileInfo of files) {
+			if (fileInfo.isFile && fileInfo.name.toLowerCase().endsWith('.png')) {
+				const filePath = folder + '/' + fileInfo.name;
 				const fileSize = Deno.statSync(filePath).size;
 				this.totalSizeBefore += fileSize;
 				if (this.cache[filePath]?.sizeAfter === fileSize)
@@ -84,8 +82,10 @@ class App {
 				const fileSizeAfter = Deno.statSync(filePath).size;
 				this.totalSizeAfter += fileSizeAfter;
 			}
-			if (fileName.isDirectory)
-				await this.compressFolder(folder + '/' + fileName.name);
+			if (fileInfo.isDirectory && fileInfo.name !== '.' && fileInfo.name !== '..') {
+				console.log('fileInfo.name', fileInfo.name);
+				await this.compressFolder(folder + '/' + fileInfo.name);
+			}
 		}
 		if (skippedCount)
 			console.log('  skipped', skippedCount, 'files');
@@ -99,7 +99,7 @@ class App {
 		if (output.code === 0) {
 			const fileSizeAfter = Deno.statSync(filePath).size;
 			this.compressedSizeBefore += fileSizeBefore;
-			this.compressedSizeBefore += fileSizeAfter;
+			this.compressedSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
 			this.cache[filePath] = new FileInfo(fileSizeBefore, fileSizeAfter);
 			this.saveCache();
