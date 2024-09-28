@@ -33,7 +33,6 @@ class App {
 	async run() {
 		this.loadCache();
 		await this.compressFolder();
-		this.saveCache();
 	}
 
 	private loadCache() {
@@ -53,36 +52,43 @@ class App {
 			folder = this.folder;
 		console.log('Compressing folder:', this.folder);
 		const files = Deno.readDir(this.folder);
+		let skippedCount = 0;
 		for await (const fileName of files) {
 			if (fileName.isFile && fileName.name.toLowerCase().endsWith('.png')) {
 				const filePath = this.folder + '/' + fileName.name;
 				const fileSize = Deno.statSync(filePath).size;
 				if (this.cache[filePath] === fileSize)
-					console.log('Skipping file:', filePath);
+					++skippedCount;
 				else {
 					console.log('Compressing file:', filePath, prettyBytes(fileSize));
 					this.compressFile(filePath);
 				}
 			}
 		}
+		if (skippedCount)
+			console.log('  skipped', skippedCount, 'files');
 	}
 
-	private compressFile(filePath: string) {
-		const fileSizeBefore = Deno.statSync(filePath).size;
+	private compressFile(sourceFilePath: string) {
+		const fileSizeBefore = Deno.statSync(sourceFilePath).size;
 		const postfix = (Math.random() * 999_999).toFixed();
-		const outputFilePath = filePath + '.' + postfix;
+		const outputFilePath = sourceFilePath + '.' + postfix;
 		const output = new Deno.Command(this.pngCrushPath,
-			{ args: [filePath, outputFilePath] }
+			{ args: [sourceFilePath, outputFilePath] }
 		).outputSync();
 		if (output.code === 0) {
 			const fileSizeAfter = Deno.statSync(outputFilePath).size;
+			Deno.removeSync(sourceFilePath);
+			Deno.renameSync(outputFilePath, sourceFilePath);
+
 			this.totalSizeBefore += fileSizeBefore;
 			this.totalSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
-			this.cache[filePath] = fileSizeBefore;
+			this.cache[sourceFilePath] = fileSizeAfter;
+			this.saveCache();
 			console.log('\tdone', (ratio * 100).toFixed(1) + '%');
 		} else
-			console.error('Failed:', filePath, '=>', output.code,
+			console.error('Failed:', sourceFilePath, '=>', output.code,
 				'\n', new TextDecoder().decode(output.stdout),
 				'\n', new TextDecoder().decode(output.stderr));
 	}
