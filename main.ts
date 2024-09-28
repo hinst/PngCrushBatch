@@ -82,10 +82,8 @@ class App {
 				const fileSizeAfter = Deno.statSync(filePath).size;
 				this.totalSizeAfter += fileSizeAfter;
 			}
-			if (fileInfo.isDirectory && fileInfo.name !== '.' && fileInfo.name !== '..') {
-				console.log('fileInfo.name', fileInfo.name);
+			if (fileInfo.isDirectory && fileInfo.name !== '.' && fileInfo.name !== '..')
 				await this.compressFolder(folder + '/' + fileInfo.name);
-			}
 		}
 		if (skippedCount)
 			console.log('  skipped', skippedCount, 'files');
