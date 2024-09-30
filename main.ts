@@ -1,5 +1,6 @@
-import "jsr:@std/dotenv/load"
-import { prettyBytes } from "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts"
+import 'jsr:@std/dotenv/load'
+import { prettyBytes } from 'https://deno.land/x/pretty_bytes@v2.0.0/mod.ts';
+import { normalizeFilePath } from './file.ts';
 
 class FileInfo {
 	constructor(public sizeBefore: number, public sizeAfter: number) {
@@ -53,8 +54,16 @@ class App {
 
 	private loadCache() {
 		try {
-			if (Deno.statSync(this.cacheFilePath))
+			if (Deno.statSync(this.cacheFilePath)) {
 				this.cache = JSON.parse(Deno.readTextFileSync(this.cacheFilePath));
+				for (const filePath in this.cache) {
+					const newFilePath = normalizeFilePath(filePath);
+					if (filePath !== newFilePath) {
+						this.cache[newFilePath] = this.cache[filePath];
+						delete this.cache[filePath];
+					}
+				}
+			}
 		} catch (_) {
 			// file not found
 		}
@@ -70,7 +79,7 @@ class App {
 		let skippedCount = 0;
 		for await (const fileInfo of files) {
 			if (fileInfo.isFile && fileInfo.name.toLowerCase().endsWith('.png')) {
-				const filePath = folder + '/' + fileInfo.name;
+				const filePath = normalizeFilePath(folder + '/' + fileInfo.name);
 				const fileSize = Deno.statSync(filePath).size;
 				this.totalSizeBefore += fileSize;
 				if (this.cache[filePath]?.sizeAfter === fileSize)
