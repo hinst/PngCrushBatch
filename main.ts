@@ -25,7 +25,7 @@ class App {
 	}
 
 	private get cacheFilePath() {
-		return './' + App.CACHE_FILE_NAME;;
+		return './' + App.CACHE_FILE_NAME;
 	}
 
 	private loadPngCrushPath() {
