@@ -29,13 +29,13 @@ export class StorageDb {
 	}
 
 	public close() {
-		this.db.execute('VACUUM');
 		this._db?.close();
 		this._db = undefined;
 	}
 
 	private initialize(db: DB) {
 		db.execute(StorageDb.schema);
+		db.execute('VACUUM');
 	}
 
 	public write(fullName: string, fileInfo: FileInfo) {
