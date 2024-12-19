@@ -9,8 +9,6 @@ class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
 	static readonly CACHE_FILE_NAME = 'cache.json';
 	private pngCrushPath: string;
-	/** File path -> compressed size */
-	private cache: Record<string, FileInfo> = {};
 	private totalSizeBefore = 0;
 	private totalSizeAfter = 0;
 	private compressedSizeBefore = 0;
@@ -35,10 +33,7 @@ class App {
 	}
 
 	async run() {
-		if (!this.folder?.length)
-			throw new Error('Folder is missing');
 		console.time('Total time');
-		this.loadCache();
 		await this.compressFolder(this.folder);
 		console.timeEnd('Total time');
 		console.log('Total size');
@@ -47,37 +42,6 @@ class App {
 		console.log('Compressed size');
 		console.log('  Before:', prettyBytes(this.compressedSizeBefore));
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
-	}
-
-	async migrate() {
-		this.loadCache();
-		const db = new StorageDb();
-		for (const fullName in this.cache) {
-			const fileInfo = this.cache[fullName];
-			db.write(fullName, fileInfo);
-		}
-		db.close();
-	}
-
-	private loadCache() {
-		try {
-			if (Deno.statSync(this.cacheFilePath)) {
-				this.cache = JSON.parse(Deno.readTextFileSync(this.cacheFilePath));
-				for (const filePath in this.cache) {
-					const newFilePath = normalizeFilePath(filePath);
-					if (filePath !== newFilePath) {
-						this.cache[newFilePath] = this.cache[filePath];
-						delete this.cache[filePath];
-					}
-				}
-			}
-		} catch (_) {
-			// file not found
-		}
-	}
-
-	private saveCache() {
-		Deno.writeTextFileSync(this.cacheFilePath, JSON.stringify(this.cache, null, '\t'));
 	}
 
 	private async compressFolder(folder: string) {
@@ -116,7 +80,6 @@ class App {
 			this.compressedSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
 			this.cache[filePath] = new FileInfo(fileSizeBefore, fileSizeAfter);
-			this.saveCache();
 			console.log('\tdone', (ratio * 100).toFixed(1) + '%');
 		} else
 			console.error('Failed:', filePath, '=>', output.code,
@@ -127,11 +90,8 @@ class App {
 
 const args = parseArgs(Deno.args, {
 	string: ['dir'],
-	boolean: ['migrate'],
 });
+if (!args.dir)
+	throw new Error('--dir is required');
 
-if (args.dir) {
-	new App(args.dir).run();
-} else if (args.migrate) {
-	new App('').migrate();
-}
+new App(args.dir).run();
