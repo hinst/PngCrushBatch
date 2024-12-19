@@ -1,4 +1,4 @@
-import 'jsr:@std/dotenv/load'
+import 'jsr:@std/dotenv/load';
 import { prettyBytes } from 'https://deno.land/x/pretty_bytes@v2.0.0/mod.ts';
 import { normalizeFilePath } from './file.ts';
 
