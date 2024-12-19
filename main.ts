@@ -1,11 +1,9 @@
 import 'jsr:@std/dotenv/load';
+import { parseArgs } from 'jsr:@std/cli/parse-args';
 import { prettyBytes } from 'https://deno.land/x/pretty_bytes@v2.0.0/mod.ts';
 import { normalizeFilePath } from './file.ts';
-
-class FileInfo {
-	constructor(public sizeBefore: number, public sizeAfter: number) {
-	}
-}
+import { StorageDb } from './storageDb.ts';
+import { FileInfo } from './fileInfo.ts';
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
@@ -19,8 +17,6 @@ class App {
 	private compressedSizeAfter = 0;
 
 	constructor(private folder: string) {
-		if (!folder?.length)
-			throw new Error(App.PNG_CRUSH_PATH_ENV);
 		this.pngCrushPath = this.loadPngCrushPath();
 	}
 
@@ -39,6 +35,8 @@ class App {
 	}
 
 	async run() {
+		if (!this.folder?.length)
+			throw new Error('Folder is missing');
 		console.time('Total time');
 		this.loadCache();
 		await this.compressFolder(this.folder);
@@ -51,6 +49,15 @@ class App {
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
 	}
 
+	async migrate() {
+		this.loadCache();
+		const db = new StorageDb();
+		for (const fullName in this.cache) {
+			const fileInfo = this.cache[fullName];
+			db.write(fullName, fileInfo);
+		}
+		db.close();
+	}
 
 	private loadCache() {
 		try {
@@ -118,4 +125,13 @@ class App {
 	}
 }
 
-new App(Deno.args[0]).run();
+const args = parseArgs(Deno.args, {
+	string: ['dir'],
+	boolean: ['migrate'],
+});
+
+if (args.dir) {
+	new App(args.dir).run();
+} else if (args.migrate) {
+	new App('').migrate();
+}
