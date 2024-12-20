@@ -135,7 +135,7 @@ const args = parseArgs(Deno.args, {
 
 function main() {
 	if (args.dir)
-		new App(args.dir).run();
+		new App(normalizeFilePath(args.dir)).run();
 	if (args.stat)
 		new App('').showStatistics();
 	if (!args.dir?.length && !args.stat)
