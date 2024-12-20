@@ -4,7 +4,6 @@ import { prettyBytes } from 'https://deno.land/x/pretty_bytes@v2.0.0/mod.ts';
 import { normalizeFilePath } from './file.ts';
 import { StorageDb } from './storageDb.ts';
 import { FileInfo } from './fileInfo.ts';
-import { existsSync } from "https://deno.land/std/fs/mod.ts";
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
@@ -69,32 +68,33 @@ class App {
 		console.log('Compressing folder:', folder);
 		const files = Deno.readDir(folder);
 		let skippedCount = 0;
-		for await (const fileInfo of files) {
-			if (fileInfo.isFile && fileInfo.name.toLowerCase().endsWith('.png')) {
-				const filePath = normalizeFilePath(folder + '/' + fileInfo.name);
+		for await (const fileRecord of files) {
+			if (fileRecord.isFile && fileRecord.name.toLowerCase().endsWith('.png')) {
+				const filePath = normalizeFilePath(folder + '/' + fileRecord.name);
 				const fileSize = Deno.statSync(filePath).size;
-				this.totalSizeBefore += fileSize;
-				if (this.getSizeAfter(filePath) === fileSize)
+				const fileInfo = this.readFileInfo(filePath);
+				if (fileInfo && fileInfo.sizeAfter === fileSize) {
+					this.totalSizeBefore += fileInfo.sizeBefore;
 					++skippedCount;
-				else {
+				} else {
+					this.totalSizeBefore += fileSize;
 					console.log('Compressing file:', filePath, prettyBytes(fileSize));
 					this.compressFile(filePath);
 				}
 				const fileSizeAfter = Deno.statSync(filePath).size;
 				this.totalSizeAfter += fileSizeAfter;
 			}
-			if (fileInfo.isDirectory && fileInfo.name !== '.' && fileInfo.name !== '..')
-				await this.compressFolder(folder + '/' + fileInfo.name);
+			if (fileRecord.isDirectory && fileRecord.name !== '.' && fileRecord.name !== '..')
+				await this.compressFolder(folder + '/' + fileRecord.name);
 		}
 		if (skippedCount)
 			console.log('  skipped', skippedCount, 'files');
 	}
 
-	private getSizeAfter(filePath: string) {
+	private readFileInfo(filePath: string): FileInfo | undefined {
 		const db = new StorageDb();
 		try {
-			const sizeAfter = db.read(filePath)?.sizeAfter;
-			return sizeAfter;
+			return db.read(filePath);
 		} finally {
 			db.close();
 		}
