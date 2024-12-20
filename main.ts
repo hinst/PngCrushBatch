@@ -4,6 +4,7 @@ import { prettyBytes } from 'https://deno.land/x/pretty_bytes@v2.0.0/mod.ts';
 import { normalizeFilePath } from './file.ts';
 import { StorageDb } from './storageDb.ts';
 import { FileInfo } from './fileInfo.ts';
+import { existsSync } from "https://deno.land/std/fs/mod.ts";
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
@@ -44,6 +45,26 @@ class App {
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
 	}
 
+	showStatistics() {
+		const db = new StorageDb();
+		let totalSizeBefore = 0;
+		let totalSizeAfter = 0;
+		try {
+			console.log('Total records:', db.getCount());
+			db.forEach((item) => {
+				totalSizeBefore += item.sizeBefore;
+				totalSizeAfter += item.sizeAfter;
+			});
+			console.log('Total size');
+			console.log('  Before:', prettyBytes(totalSizeBefore));
+			console.log('  After:', prettyBytes(totalSizeAfter));
+			console.log('  Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
+			console.log('  Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
+		} finally {
+			db.close();
+		}
+	}
+
 	private async compressFolder(folder: string) {
 		console.log('Compressing folder:', folder);
 		const files = Deno.readDir(folder);
@@ -53,7 +74,7 @@ class App {
 				const filePath = normalizeFilePath(folder + '/' + fileInfo.name);
 				const fileSize = Deno.statSync(filePath).size;
 				this.totalSizeBefore += fileSize;
-				if (this.cache[filePath]?.sizeAfter === fileSize)
+				if (this.getSizeAfter(filePath) === fileSize)
 					++skippedCount;
 				else {
 					console.log('Compressing file:', filePath, prettyBytes(fileSize));
@@ -69,6 +90,25 @@ class App {
 			console.log('  skipped', skippedCount, 'files');
 	}
 
+	private getSizeAfter(filePath: string) {
+		const db = new StorageDb();
+		try {
+			const sizeAfter = db.read(filePath)?.sizeAfter;
+			return sizeAfter;
+		} finally {
+			db.close();
+		}
+	}
+
+	private writeFileInfo(filePath: string, fileInfo: FileInfo) {
+		const db = new StorageDb();
+		try {
+			db.write(filePath, fileInfo);
+		} finally {
+			db.close();
+		}
+	}
+
 	private compressFile(filePath: string) {
 		const fileSizeBefore = Deno.statSync(filePath).size;
 		const output = new Deno.Command(this.pngCrushPath,
@@ -79,10 +119,10 @@ class App {
 			this.compressedSizeBefore += fileSizeBefore;
 			this.compressedSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
-			this.cache[filePath] = new FileInfo(fileSizeBefore, fileSizeAfter);
-			console.log('\tdone', (ratio * 100).toFixed(1) + '%');
+			this.writeFileInfo(filePath, new FileInfo(fileSizeBefore, fileSizeAfter));
+			console.log('  done', (ratio * 100).toFixed(1) + '%');
 		} else
-			console.error('Failed:', filePath, '=>', output.code,
+			console.error('  failed:', filePath, '=>', output.code,
 				'\n', new TextDecoder().decode(output.stdout),
 				'\n', new TextDecoder().decode(output.stderr));
 	}
@@ -90,8 +130,16 @@ class App {
 
 const args = parseArgs(Deno.args, {
 	string: ['dir'],
+	boolean: ['stat'],
 });
-if (!args.dir)
-	throw new Error('--dir is required');
 
-new App(args.dir).run();
+function main() {
+	if (args.dir)
+		new App(args.dir).run();
+	if (args.stat)
+		new App('').showStatistics();
+	if (!args.dir?.length && !args.stat)
+		console.log('Nothing to do. Need --dir');
+}
+
+main();
