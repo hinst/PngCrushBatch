@@ -13,6 +13,7 @@
     }
   },
   "redirects": {
+    "https://deno.land/x/pretty_bytes/mod.ts": "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts",
     "https://deno.land/x/sqlite/mod.ts": "https://deno.land/x/sqlite@v3.9.1/mod.ts"
   },
   "remote": {
