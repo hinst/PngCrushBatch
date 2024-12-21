@@ -64,15 +64,6 @@ class App {
 		}
 	}
 
-	public migrate() {
-		const db = new StorageDb();
-		try {
-			db.migrate();
-		} finally {
-			db.close();
-		}
-	}
-
 	private async compressFolder(folder: string) {
 		console.log('Compressing folder:', folder);
 		const files = Deno.readDir(folder);
@@ -150,10 +141,6 @@ function main() {
 	}
 	if (args.stat) {
 		new App('').showStatistics();
-		done = true;
-	}
-	if (args.migrate) {
-		new App('').migrate();
 		done = true;
 	}
 	if (!done)
