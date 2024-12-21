@@ -57,6 +57,10 @@ export class StorageDb {
 		}
 	}
 
+	public delete(fullName: string) {
+		this.db.query('DELETE FROM files WHERE fullName = ?', [fullName]);
+	}
+
 	public forEach(callback: (item: FileInfoRow) => void) {
 		const count = this.getCount();
 		for (let offset = 0; offset < count; offset += StorageDb.PAGE_SIZE) {

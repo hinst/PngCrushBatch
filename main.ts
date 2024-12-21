@@ -18,10 +18,6 @@ class App {
 		this.pngCrushPath = this.loadPngCrushPath();
 	}
 
-	private get cacheFilePath() {
-		return './' + App.CACHE_FILE_NAME;
-	}
-
 	private loadPngCrushPath() {
 		const PNG_CRUSH_PATH = Deno.env.get('PNG_CRUSH_PATH');
 		console.log(App.PNG_CRUSH_PATH_ENV, '=', PNG_CRUSH_PATH);
@@ -34,6 +30,7 @@ class App {
 
 	async run() {
 		console.time('Total time');
+		this.cleanDeadRecords(this.folder);
 		await this.compressFolder(this.folder);
 		console.timeEnd('Total time');
 		console.log('Total size');
@@ -89,6 +86,36 @@ class App {
 		}
 		if (skippedCount)
 			console.log('  skipped', skippedCount, 'files');
+	}
+
+	private cleanDeadRecords(folder: string) {
+		Deno.readDir(folder);
+		const db = new StorageDb();
+		try {
+			const deadFiles: string[] = [];
+			db.forEach((item) => {
+				if (!item.fullName.startsWith(folder))
+					return;
+				let fileExists = false;
+				try {
+					fileExists = Deno.statSync(item.fullName).isFile;
+				} catch (e) {
+					if ((e as any).code === 'ENOENT')
+						fileExists = false;
+					else
+						throw e;
+				}
+				if (!fileExists)
+					deadFiles.push(item.fullName);
+			});
+			deadFiles.forEach((fullName) => {
+				db.delete(fullName);
+			});
+			if (deadFiles.length > 0)
+				console.log('Deleted dead records:', deadFiles.length);
+		} finally {
+			db.close();
+		}
 	}
 
 	private readFileInfo(filePath: string): FileInfo | undefined {
