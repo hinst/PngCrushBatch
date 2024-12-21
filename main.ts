@@ -1,7 +1,7 @@
 import 'jsr:@std/dotenv/load';
 import { parseArgs } from 'jsr:@std/cli/parse-args';
 import { prettyBytes } from "https://deno.land/x/pretty_bytes/mod.ts";
-import { normalizeFilePath } from './file.ts';
+import { calculateChecksum, normalizeFilePath } from './file.ts';
 import { StorageDb } from './storageDb.ts';
 import { FileInfo } from './fileInfo.ts';
 
@@ -79,7 +79,7 @@ class App {
 				} else {
 					this.totalSizeBefore += fileSize;
 					console.log('Compressing file:', filePath, prettyBytes(fileSize));
-					this.compressFile(filePath);
+					await this.compressFile(filePath);
 				}
 				const fileSizeAfter = Deno.statSync(filePath).size;
 				this.totalSizeAfter += fileSizeAfter;
@@ -109,7 +109,7 @@ class App {
 		}
 	}
 
-	private compressFile(filePath: string) {
+	private async compressFile(filePath: string) {
 		const fileSizeBefore = Deno.statSync(filePath).size;
 		const output = new Deno.Command(this.pngCrushPath,
 			{ args: ['-ow', filePath] }
@@ -119,7 +119,8 @@ class App {
 			this.compressedSizeBefore += fileSizeBefore;
 			this.compressedSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
-			this.writeFileInfo(filePath, new FileInfo(fileSizeBefore, fileSizeAfter));
+			const checksum = await calculateChecksum(filePath);
+			this.writeFileInfo(filePath, new FileInfo(fileSizeBefore, fileSizeAfter, checksum));
 			console.log('  done', (ratio * 100).toFixed(1) + '%');
 		} else
 			console.error('  failed:', filePath, '=>', output.code,
