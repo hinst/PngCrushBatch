@@ -42,8 +42,8 @@ export class StorageDb {
 	public write(fullName: string, fileInfo: FileInfo) {
 		this.db.query(
 			'INSERT INTO files (fullName, sizeBefore, sizeAfter, checksum) ' +
-				'VALUES (?, ?, ?) ON CONFLICT(fullName) DO UPDATE SET ' +
-				'sizeBefore=excluded.sizeBefore, sizeAfter=excluded.sizeAfter',
+				'VALUES (?, ?, ?, ?) ON CONFLICT(fullName) DO UPDATE SET ' +
+				'sizeBefore=excluded.sizeBefore, sizeAfter=excluded.sizeAfter, checksum=excluded.checksum',
 			[fullName, fileInfo.sizeBefore, fileInfo.sizeAfter, fileInfo.checksum]
 		);
 	}
