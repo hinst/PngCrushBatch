@@ -44,7 +44,7 @@ class App {
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
 	}
 
-	showStatistics() {
+	public showStatistics() {
 		const db = new StorageDb();
 		let totalSizeBefore = 0;
 		let totalSizeAfter = 0;
@@ -59,6 +59,15 @@ class App {
 			console.log('  After:', prettyBytes(totalSizeAfter));
 			console.log('  Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
 			console.log('  Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
+		} finally {
+			db.close();
+		}
+	}
+
+	public migrate() {
+		const db = new StorageDb();
+		try {
+			db.migrate();
 		} finally {
 			db.close();
 		}
@@ -130,16 +139,25 @@ class App {
 
 const args = parseArgs(Deno.args, {
 	string: ['dir'],
-	boolean: ['stat'],
+	boolean: ['stat', 'migrate'],
 });
 
 function main() {
-	if (args.dir)
+	let done = false;
+	if (args.dir) {
 		new App(normalizeFilePath(args.dir)).run();
-	if (args.stat)
+		done = true;
+	}
+	if (args.stat) {
 		new App('').showStatistics();
-	if (!args.dir?.length && !args.stat)
-		console.log('Nothing to do. Need --dir');
+		done = true;
+	}
+	if (args.migrate) {
+		new App('').migrate();
+		done = true;
+	}
+	if (!done)
+		console.log('Nothing to do. Please supply command');
 }
 
 main();
