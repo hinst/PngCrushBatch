@@ -39,6 +39,7 @@ class App {
 		console.log('Compressed size');
 		console.log('  Before:', prettyBytes(this.compressedSizeBefore));
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
+		this.findDuplicates();
 	}
 
 	public showStatistics() {
@@ -116,6 +117,26 @@ class App {
 		} finally {
 			db.close();
 		}
+	}
+
+	private findDuplicates() {
+		const checksumMap: Record<string, number> = {};
+		const db = new StorageDb();
+		try {
+			db.forEach((item) => {
+				const count = checksumMap[item.checksum] || 0;
+				checksumMap[item.checksum] = count + 1;
+			});
+		} finally {
+			db.close();
+		}
+		let duplicateCount = 0;
+		for (const checksum in checksumMap) {
+			if (checksumMap[checksum] > 1) {
+				++duplicateCount;
+			}
+		}
+		console.log('Duplicate files:', duplicateCount);
 	}
 
 	private readFileInfo(filePath: string): FileInfo | undefined {
