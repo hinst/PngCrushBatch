@@ -13,10 +13,13 @@
     }
   },
   "redirects": {
+    "https://deno.land/std/encoding/hex.ts": "https://deno.land/std@0.224.0/encoding/hex.ts",
     "https://deno.land/x/pretty_bytes/mod.ts": "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts",
     "https://deno.land/x/sqlite/mod.ts": "https://deno.land/x/sqlite@v3.9.1/mod.ts"
   },
   "remote": {
+    "https://deno.land/std@0.224.0/encoding/_util.ts": "beacef316c1255da9bc8e95afb1fa56ed69baef919c88dc06ae6cb7a6103d376",
+    "https://deno.land/std@0.224.0/encoding/hex.ts": "6270f25e5d85f99fcf315278670ba012b04b7c94b67715b53f30d03249687c07",
     "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts": "f1d59ab40530f640694833c61d68c892692e7f5db8f00dbdbe9f4fdcf52112a9",
     "https://deno.land/x/sqlite@v3.9.1/build/sqlite.js": "2afc7875c7b9c85d89730c4a311ab3a304e5d1bf761fbadd8c07bbdf130f5f9b",
     "https://deno.land/x/sqlite@v3.9.1/build/vfs.js": "7f7778a9fe499cd10738d6e43867340b50b67d3e39142b0065acd51a84cd2e03",

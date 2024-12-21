@@ -72,17 +72,4 @@ export class StorageDb {
 	public getCount() {
 		return this.db.query('SELECT COUNT(*) FROM files')[0][0] as number;
 	}
-
-	public migrate() {
-		this.db.execute(`CREATE TABLE IF NOT EXISTS files2(
-			fullName TEXT PRIMARY KEY,
-			sizeBefore INTEGER NOT NULL,
-			sizeAfter INTEGER NOT NULL,
-			checksum TEXT NOT NULL
-		);`);
-		this.db.execute('INSERT INTO files2 SELECT fullName, sizeBefore, sizeAfter, checksum FROM files;');
-		this.db.execute('DROP TABLE files;');
-		this.db.execute('ALTER TABLE files2 RENAME TO files;');
-		this.db.execute('VACUUM;');
-	}
 }
