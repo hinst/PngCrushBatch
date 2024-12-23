@@ -1,6 +1,6 @@
 import 'jsr:@std/dotenv/load';
 import { parseArgs } from 'jsr:@std/cli/parse-args';
-import { prettyBytes } from "https://deno.land/x/pretty_bytes/mod.ts";
+import { prettyBytes } from 'https://deno.land/x/pretty_bytes/mod.ts';
 import { calculateChecksum, normalizeFilePath } from './file.ts';
 import { StorageDb } from './storageDb.ts';
 import { FileInfo } from './fileInfo.ts';
@@ -31,6 +31,7 @@ class App {
 
 	async run() {
 		console.time('Total time');
+		new Deno.Command(this.pngCrushPath).outputSync(); // requesting permission
 		this.cleanDeadRecords(this.folder);
 		await this.compressFolder(this.folder);
 		console.timeEnd('Total time');
