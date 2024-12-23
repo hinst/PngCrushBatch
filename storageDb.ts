@@ -76,4 +76,12 @@ export class StorageDb {
 	public getCount() {
 		return this.db.query('SELECT COUNT(*) FROM files')[0][0] as number;
 	}
+
+	public findByChecksum(checksum: string): FileInfoRow[] {
+		const rows = this.db.queryEntries<FileInfoRowFields>(
+			'SELECT fullName, sizeBefore, sizeAfter, checksum FROM files WHERE checksum = ?',
+			[checksum]
+		);
+		return rows;
+	}
 }

@@ -72,13 +72,13 @@ class App {
 
 		// Print statistics
 		console.log('Total size');
-		console.log('  Before:', prettyBytes(this.totalSizeBefore));
-		console.log('  After:', prettyBytes(this.totalSizeAfter));
+		console.log(' Before:', prettyBytes(this.totalSizeBefore));
+		console.log(' After:', prettyBytes(this.totalSizeAfter));
 		console.log('Compressed in this session');
-		console.log('  Before:', prettyBytes(this.compressedSizeBefore));
-		console.log('  After:', prettyBytes(this.compressedSizeAfter));
+		console.log(' Before:', prettyBytes(this.compressedSizeBefore));
+		console.log(' After:', prettyBytes(this.compressedSizeAfter));
 
-		this.findDuplicates();
+		this.findDuplicates(this.folder);
 		this.close();
 	}
 
@@ -91,10 +91,10 @@ class App {
 			totalSizeAfter += item.sizeAfter;
 		});
 		console.log('Total size');
-		console.log('  Before:', prettyBytes(totalSizeBefore));
-		console.log('  After:', prettyBytes(totalSizeAfter));
-		console.log('  Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
-		console.log('  Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
+		console.log(' Before:', prettyBytes(totalSizeBefore));
+		console.log(' After:', prettyBytes(totalSizeAfter));
+		console.log(' Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
+		console.log(' Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
 	}
 
 	private async compressFolder(folder: string) {
@@ -146,9 +146,11 @@ class App {
 			console.log('Deleted dead records:', deadFiles.length);
 	}
 
-	private findDuplicates() {
+	private findDuplicates(folder: string) {
 		const checksumMap: Record<string, number> = {};
 		this.db.forEach((item) => {
+			if (!item.fullName.startsWith(folder))
+				return;
 			const count = checksumMap[item.checksum] || 0;
 			checksumMap[item.checksum] = count + 1;
 		});
@@ -159,6 +161,16 @@ class App {
 			}
 		}
 		console.log('Duplicate files:', duplicateCount);
+		let counter = 0;
+		for (const checksum in checksumMap) {
+			if (checksumMap[checksum] > 1) {
+				++counter;
+				console.log(counter, checksum);
+				const items = this.db.findByChecksum(checksum);
+				for (const item of items)
+					console.log(' ' + item.fullName);
+			}
+		}
 	}
 
 	private readFileInfo(filePath: string): FileInfo | undefined {
@@ -183,7 +195,7 @@ class App {
 			this.writeFileInfo(filePath, new FileInfo(fileSizeBefore, fileSizeAfter, checksum));
 			console.log('  done', (ratio * 100).toFixed(1) + '%');
 		} else
-			console.error('  failed:', filePath, '=>', output.code,
+			console.error(' failed:', filePath, '=>', output.code,
 				'\n', new TextDecoder().decode(output.stdout),
 				'\n', new TextDecoder().decode(output.stderr));
 	}
