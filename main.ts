@@ -4,6 +4,7 @@ import { prettyBytes } from "https://deno.land/x/pretty_bytes/mod.ts";
 import { calculateChecksum, normalizeFilePath } from './file.ts';
 import { StorageDb } from './storageDb.ts';
 import { FileInfo } from './fileInfo.ts';
+import { isFileNotFoundError } from './exception.ts';
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
@@ -101,7 +102,7 @@ class App {
 				try {
 					fileExists = Deno.statSync(item.fullName).isFile;
 				} catch (e) {
-					if ((e as any).code === 'ENOENT')
+					if (isFileNotFoundError(e))
 						fileExists = false;
 					else
 						throw e;
