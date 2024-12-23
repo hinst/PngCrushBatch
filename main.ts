@@ -14,6 +14,13 @@ class App {
 	private totalSizeAfter = 0;
 	private compressedSizeBefore = 0;
 	private compressedSizeAfter = 0;
+	private _db?: StorageDb;
+
+	private get db(): StorageDb {
+		if (undefined == this._db)
+			this._db = new StorageDb();
+		return this._db;
+	}
 
 	constructor(private folder: string) {
 		this.pngCrushPath = this.loadPngCrushPath();
@@ -45,23 +52,18 @@ class App {
 	}
 
 	public showStatistics() {
-		const db = new StorageDb();
 		let totalSizeBefore = 0;
 		let totalSizeAfter = 0;
-		try {
-			console.log('Total records:', db.getCount());
-			db.forEach((item) => {
-				totalSizeBefore += item.sizeBefore;
-				totalSizeAfter += item.sizeAfter;
-			});
-			console.log('Total size');
-			console.log('  Before:', prettyBytes(totalSizeBefore));
-			console.log('  After:', prettyBytes(totalSizeAfter));
-			console.log('  Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
-			console.log('  Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
-		} finally {
-			db.close();
-		}
+		console.log('Total records:', this.db.getCount());
+		this.db.forEach((item) => {
+			totalSizeBefore += item.sizeBefore;
+			totalSizeAfter += item.sizeAfter;
+		});
+		console.log('Total size');
+		console.log('  Before:', prettyBytes(totalSizeBefore));
+		console.log('  After:', prettyBytes(totalSizeAfter));
+		console.log('  Total saved:', prettyBytes(totalSizeBefore - totalSizeAfter));
+		console.log('  Total saved %:', ((totalSizeBefore - totalSizeAfter) / totalSizeBefore * 100).toFixed(1) + '%');
 	}
 
 	private async compressFolder(folder: string) {
@@ -93,45 +95,35 @@ class App {
 
 	private cleanDeadRecords(folder: string) {
 		Deno.readDir(folder);
-		const db = new StorageDb();
-		try {
-			const deadFiles: string[] = [];
-			db.forEach((item) => {
-				if (!item.fullName.startsWith(folder))
-					return;
-				let fileExists = false;
-				try {
-					fileExists = Deno.statSync(item.fullName).isFile;
-				} catch (e) {
-					if (isFileNotFoundError(e))
-						fileExists = false;
-					else
-						throw e;
-				}
-				if (!fileExists)
-					deadFiles.push(item.fullName);
-			});
-			deadFiles.forEach((fullName) => {
-				db.delete(fullName);
-			});
-			if (deadFiles.length > 0)
-				console.log('Deleted dead records:', deadFiles.length);
-		} finally {
-			db.close();
-		}
+		const deadFiles: string[] = [];
+		this.db.forEach((item) => {
+			if (!item.fullName.startsWith(folder))
+				return;
+			let fileExists = false;
+			try {
+				fileExists = Deno.statSync(item.fullName).isFile;
+			} catch (e) {
+				if (isFileNotFoundError(e))
+					fileExists = false;
+				else
+					throw e;
+			}
+			if (!fileExists)
+				deadFiles.push(item.fullName);
+		});
+		deadFiles.forEach((fullName) => {
+			this.db.delete(fullName);
+		});
+		if (deadFiles.length > 0)
+			console.log('Deleted dead records:', deadFiles.length);
 	}
 
 	private findDuplicates() {
 		const checksumMap: Record<string, number> = {};
-		const db = new StorageDb();
-		try {
-			db.forEach((item) => {
-				const count = checksumMap[item.checksum] || 0;
-				checksumMap[item.checksum] = count + 1;
-			});
-		} finally {
-			db.close();
-		}
+		this.db.forEach((item) => {
+			const count = checksumMap[item.checksum] || 0;
+			checksumMap[item.checksum] = count + 1;
+		});
 		let duplicateCount = 0;
 		for (const checksum in checksumMap) {
 			if (checksumMap[checksum] > 1) {
@@ -142,21 +134,11 @@ class App {
 	}
 
 	private readFileInfo(filePath: string): FileInfo | undefined {
-		const db = new StorageDb();
-		try {
-			return db.read(filePath);
-		} finally {
-			db.close();
-		}
+		return this.db.read(filePath);
 	}
 
 	private writeFileInfo(filePath: string, fileInfo: FileInfo) {
-		const db = new StorageDb();
-		try {
-			db.write(filePath, fileInfo);
-		} finally {
-			db.close();
-		}
+		this.db.write(filePath, fileInfo);
 	}
 
 	private async compressFile(filePath: string) {
