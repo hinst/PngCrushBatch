@@ -1,5 +1,5 @@
 {
 	"tasks": {
-		"start": "deno run --env --allow-read=. --allow-env=PNG_CRUSH_PATH --allow-read=C:/App/PngCrush --allow-write=./cache.json --allow-write=./info.db --allow-write=./info.db-journal main.ts"
+		"start": "deno run --env --allow-read=. --allow-env=PNG_CRUSH_PATH,IGNORE_DIRECTORIES --allow-read=C:/App/PngCrush --allow-write=./cache.json --allow-write=./info.db --allow-write=./info.db-journal main.ts"
 	}
 }

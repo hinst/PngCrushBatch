@@ -8,32 +8,44 @@ import { isFileNotFoundError } from './exception.ts';
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
+	static readonly IGNORED_DIRECTORIES_ENV = 'IGNORE_DIRECTORIES';
 	static readonly CACHE_FILE_NAME = 'cache.json';
-	private pngCrushPath: string;
+	private pngCrushPath: string = '';
 	private totalSizeBefore = 0;
 	private totalSizeAfter = 0;
 	private compressedSizeBefore = 0;
 	private compressedSizeAfter = 0;
 	private _db?: StorageDb;
+	private ignoredDirectories: string[] = [];
 
 	private get db(): StorageDb {
-		if (undefined == this._db)
+		if (!this._db)
 			this._db = new StorageDb();
 		return this._db;
 	}
 
+	private close() {
+		this._db?.close();
+	}
+
 	constructor(private folder: string) {
-		this.pngCrushPath = this.loadPngCrushPath();
 	}
 
 	private loadPngCrushPath() {
-		const PNG_CRUSH_PATH = Deno.env.get('PNG_CRUSH_PATH');
+		const PNG_CRUSH_PATH = Deno.env.get(App.PNG_CRUSH_PATH_ENV);
 		console.log(App.PNG_CRUSH_PATH_ENV, '=', PNG_CRUSH_PATH);
 		if (!PNG_CRUSH_PATH?.length)
 			throw new Error(App.PNG_CRUSH_PATH_ENV + ' is required but not defined');
 		if (!Deno.statSync(PNG_CRUSH_PATH).isFile)
 			throw new Error(App.PNG_CRUSH_PATH_ENV + ' is defined but not a file');
-		return PNG_CRUSH_PATH;
+		this.pngCrushPath = PNG_CRUSH_PATH;
+	}
+
+	private loadIgnoredDirectories() {
+		const IGNORED_DIRECTORIES = Deno.env.get(App.IGNORED_DIRECTORIES_ENV);
+		console.log(App.IGNORED_DIRECTORIES_ENV, '=', IGNORED_DIRECTORIES);
+		if (IGNORED_DIRECTORIES)
+			this.ignoredDirectories = IGNORED_DIRECTORIES.split(',');
 	}
 
 	private clear() {
@@ -44,19 +56,30 @@ class App {
 	}
 
 	async run() {
+		// Prepare
 		this.clear();
+		this.loadPngCrushPath();
+		this.loadIgnoredDirectories();
+
+		// Request permission
+		Deno.readDir(this.folder);
+		new Deno.Command(this.pngCrushPath).outputSync();
+
 		console.time('Total time');
-		new Deno.Command(this.pngCrushPath).outputSync(); // requesting permission
 		this.cleanDeadRecords(this.folder);
 		await this.compressFolder(this.folder);
 		console.timeEnd('Total time');
+
+		// Print statistics
 		console.log('Total size');
 		console.log('  Before:', prettyBytes(this.totalSizeBefore));
 		console.log('  After:', prettyBytes(this.totalSizeAfter));
-		console.log('Compressed size');
+		console.log('Compressed in this session');
 		console.log('  Before:', prettyBytes(this.compressedSizeBefore));
 		console.log('  After:', prettyBytes(this.compressedSizeAfter));
+
 		this.findDuplicates();
+		this.close();
 	}
 
 	public showStatistics() {
@@ -75,6 +98,8 @@ class App {
 	}
 
 	private async compressFolder(folder: string) {
+		if (this.ignoredDirectories.includes(folder))
+			return;
 		const files = Deno.readDir(folder);
 		for await (const fileRecord of files) {
 			if (fileRecord.isFile && fileRecord.name.toLowerCase().endsWith('.png')) {
@@ -98,7 +123,6 @@ class App {
 	}
 
 	private cleanDeadRecords(folder: string) {
-		Deno.readDir(folder);
 		const deadFiles: string[] = [];
 		this.db.forEach((item) => {
 			if (!item.fullName.startsWith(folder))
