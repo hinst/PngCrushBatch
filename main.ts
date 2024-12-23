@@ -36,7 +36,15 @@ class App {
 		return PNG_CRUSH_PATH;
 	}
 
+	private clear() {
+		this.totalSizeBefore = 0;
+		this.totalSizeAfter = 0;
+		this.compressedSizeBefore = 0;
+		this.compressedSizeAfter = 0;
+	}
+
 	async run() {
+		this.clear();
 		console.time('Total time');
 		new Deno.Command(this.pngCrushPath).outputSync(); // requesting permission
 		this.cleanDeadRecords(this.folder);
@@ -67,17 +75,15 @@ class App {
 	}
 
 	private async compressFolder(folder: string) {
-		console.log('Compressing folder:', folder);
 		const files = Deno.readDir(folder);
-		let skippedCount = 0;
 		for await (const fileRecord of files) {
 			if (fileRecord.isFile && fileRecord.name.toLowerCase().endsWith('.png')) {
 				const filePath = normalizeFilePath(folder + '/' + fileRecord.name);
 				const fileSize = Deno.statSync(filePath).size;
 				const fileInfo = this.readFileInfo(filePath);
 				if (fileInfo && fileInfo.sizeAfter === fileSize) {
+					// The file is already compressed
 					this.totalSizeBefore += fileInfo.sizeBefore;
-					++skippedCount;
 				} else {
 					this.totalSizeBefore += fileSize;
 					console.log('Compressing file:', filePath, prettyBytes(fileSize));
@@ -89,8 +95,6 @@ class App {
 			if (fileRecord.isDirectory && fileRecord.name !== '.' && fileRecord.name !== '..')
 				await this.compressFolder(folder + '/' + fileRecord.name);
 		}
-		if (skippedCount)
-			console.log('  skipped', skippedCount, 'files');
 	}
 
 	private cleanDeadRecords(folder: string) {
