@@ -9,6 +9,7 @@ import { isFileNotFoundError } from './exception.ts';
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
 	static readonly IGNORED_DIRECTORIES_ENV = 'IGNORE_DIRECTORIES';
+	static readonly LOW_PRIORITY_DIRECTORIES_ENV = 'LOW_PRIORITY_DIRECTORIES';
 	static readonly CACHE_FILE_NAME = 'cache.json';
 	private pngCrushPath: string = '';
 	private totalSizeBefore = 0;
@@ -17,6 +18,7 @@ class App {
 	private compressedSizeAfter = 0;
 	private _db?: StorageDb;
 	private ignoredDirectories: string[] = [];
+	private lowPriorityDirectories: string[] = [];
 
 	private get db(): StorageDb {
 		if (!this._db)
@@ -41,11 +43,16 @@ class App {
 		this.pngCrushPath = PNG_CRUSH_PATH;
 	}
 
-	private loadIgnoredDirectories() {
+	private loadDirectories() {
 		const IGNORED_DIRECTORIES = Deno.env.get(App.IGNORED_DIRECTORIES_ENV);
-		console.log(App.IGNORED_DIRECTORIES_ENV, '=', IGNORED_DIRECTORIES);
 		if (IGNORED_DIRECTORIES)
 			this.ignoredDirectories = IGNORED_DIRECTORIES.split(',');
+		console.log(App.IGNORED_DIRECTORIES_ENV, '=', this.ignoredDirectories);
+
+		const LOW_PRIORITY_DIRECTORIES = Deno.env.get(App.LOW_PRIORITY_DIRECTORIES_ENV);
+		if (LOW_PRIORITY_DIRECTORIES?.length)
+			this.lowPriorityDirectories = LOW_PRIORITY_DIRECTORIES.split(',');
+		console.log(App.LOW_PRIORITY_DIRECTORIES_ENV, '=', this.lowPriorityDirectories);
 	}
 
 	private clear() {
@@ -59,7 +66,7 @@ class App {
 		// Prepare
 		this.clear();
 		this.loadPngCrushPath();
-		this.loadIgnoredDirectories();
+		this.loadDirectories();
 
 		// Request permission
 		Deno.readDir(this.folder);
@@ -129,7 +136,7 @@ class App {
 				return;
 			let fileExists = false;
 			try {
-				fileExists = Deno.statSync(item.fullName).isFile;
+				fileExists = Deno.statSync(item.fullName).isFile && item.sizeAfter > 0;
 			} catch (e) {
 				if (isFileNotFoundError(e))
 					fileExists = false;
@@ -167,8 +174,13 @@ class App {
 				++counter;
 				console.log(counter, checksum);
 				const items = this.db.findByChecksum(checksum);
-				for (const item of items)
+				for (const item of items) {
 					console.log(' ' + item.fullName);
+					if (this.lowPriorityDirectories.some(lowPriorityDirectory => item.fullName.includes(lowPriorityDirectory))) {
+						console.log(' deleting low priority duplicated file');
+						Deno.removeSync(item.fullName);
+					}
+				}
 			}
 		}
 	}
