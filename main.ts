@@ -8,10 +8,12 @@ import { isFileNotFoundError } from './exception.ts';
 
 class App {
 	static readonly PNG_CRUSH_PATH_ENV = 'PNG_CRUSH_PATH';
+	static readonly OPTI_PNG_PATH_ENV = 'OPTI_PNG_PATH';
 	static readonly IGNORED_DIRECTORIES_ENV = 'IGNORE_DIRECTORIES';
 	static readonly LOW_PRIORITY_DIRECTORIES_ENV = 'LOW_PRIORITY_DIRECTORIES';
 	static readonly CACHE_FILE_NAME = 'cache.json';
 	private pngCrushPath: string = '';
+	private optiPngPath: string = '';
 	private totalSizeBefore = 0;
 	private totalSizeAfter = 0;
 	private compressedSizeBefore = 0;
@@ -33,19 +35,30 @@ class App {
 	constructor(private folder: string) {
 	}
 
-	private loadPngCrushPath() {
-		const PNG_CRUSH_PATH = Deno.env.get(App.PNG_CRUSH_PATH_ENV);
-		console.log(App.PNG_CRUSH_PATH_ENV, '=', PNG_CRUSH_PATH);
-		if (!PNG_CRUSH_PATH?.length)
-			throw new Error(App.PNG_CRUSH_PATH_ENV + ' is required but not defined');
-		if (!Deno.statSync(PNG_CRUSH_PATH).isFile)
-			throw new Error(App.PNG_CRUSH_PATH_ENV + ' is defined but not a file');
-		this.pngCrushPath = PNG_CRUSH_PATH;
+	private loadCompressorPath() {
+		const pngCrushPath = Deno.env.get(App.PNG_CRUSH_PATH_ENV);
+		if (pngCrushPath?.length) {
+			console.log(App.PNG_CRUSH_PATH_ENV, '=', pngCrushPath);
+			if (!Deno.statSync(pngCrushPath).isFile)
+				throw new Error(App.PNG_CRUSH_PATH_ENV + ' is defined but not a file');
+			this.pngCrushPath = pngCrushPath;
+		}
+		const optiPngPath = Deno.env.get(App.OPTI_PNG_PATH_ENV);
+		if (optiPngPath?.length) {
+			console.log(App.OPTI_PNG_PATH_ENV, '=', optiPngPath);
+			if (!Deno.statSync(optiPngPath).isFile)
+				throw new Error(App.OPTI_PNG_PATH_ENV + ' is defined but not a file');
+			this.optiPngPath = optiPngPath;
+		}
+		if (!this.pngCrushPath.length && !this.optiPngPath.length)
+			throw new Error('Need compressor: PngCrush or OptiPng');
+		if (this.pngCrushPath.length && this.optiPngPath.length)
+			throw new Error('Only one compressor is allowed: PngCrush or OptiPng');
 	}
 
 	private loadDirectories() {
 		const IGNORED_DIRECTORIES = Deno.env.get(App.IGNORED_DIRECTORIES_ENV);
-		if (IGNORED_DIRECTORIES)
+		if (IGNORED_DIRECTORIES?.length)
 			this.ignoredDirectories = IGNORED_DIRECTORIES.split(',');
 		console.log(App.IGNORED_DIRECTORIES_ENV, '=', this.ignoredDirectories);
 
@@ -65,12 +78,15 @@ class App {
 	async run() {
 		// Prepare
 		this.clear();
-		this.loadPngCrushPath();
+		this.loadCompressorPath();
 		this.loadDirectories();
 
 		// Request permission
 		Deno.readDir(this.folder);
-		new Deno.Command(this.pngCrushPath).outputSync();
+		if (this.pngCrushPath.length)
+			new Deno.Command(this.pngCrushPath).outputSync();
+		if (this.optiPngPath.length)
+			new Deno.Command(this.optiPngPath).outputSync();
 
 		console.time('Total time');
 		this.cleanDeadRecords(this.folder);
@@ -195,21 +211,29 @@ class App {
 
 	private async compressFile(filePath: string) {
 		const fileSizeBefore = Deno.statSync(filePath).size;
-		const output = new Deno.Command(this.pngCrushPath,
-			{ args: ['-ow', filePath] }
-		).outputSync();
+		const output = this.compressFileCommand(filePath);
 		if (output.code === 0) {
 			const fileSizeAfter = Deno.statSync(filePath).size;
+			if (fileSizeAfter === 0)
+				console.warn(' compression failure detected');
 			this.compressedSizeBefore += fileSizeBefore;
 			this.compressedSizeAfter += fileSizeAfter;
 			const ratio = fileSizeAfter / fileSizeBefore;
 			const checksum = await calculateChecksum(filePath);
 			this.writeFileInfo(filePath, new FileInfo(fileSizeBefore, fileSizeAfter, checksum));
-			console.log('  done', (ratio * 100).toFixed(1) + '%');
+			console.log(' done', (ratio * 100).toFixed(1) + '%');
 		} else
 			console.error(' failed:', filePath, '=>', output.code,
 				'\n', new TextDecoder().decode(output.stdout),
 				'\n', new TextDecoder().decode(output.stderr));
+	}
+
+	private compressFileCommand(filePath: string) {
+		if (this.pngCrushPath.length)
+			return new Deno.Command(this.pngCrushPath, { args: ['-ow', filePath] }).outputSync();
+		if (this.optiPngPath.length)
+			return new Deno.Command(this.optiPngPath, { args: [filePath] }).outputSync();
+		throw new Error('Compressor path not found');
 	}
 }
 
