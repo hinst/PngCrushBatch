@@ -39,15 +39,11 @@ class App {
 		const pngCrushPath = Deno.env.get(App.PNG_CRUSH_PATH_ENV);
 		if (pngCrushPath?.length) {
 			console.log(App.PNG_CRUSH_PATH_ENV, '=', pngCrushPath);
-			if (!Deno.statSync(pngCrushPath).isFile)
-				throw new Error(App.PNG_CRUSH_PATH_ENV + ' is defined but not a file');
 			this.pngCrushPath = pngCrushPath;
 		}
 		const optiPngPath = Deno.env.get(App.OPTI_PNG_PATH_ENV);
 		if (optiPngPath?.length) {
 			console.log(App.OPTI_PNG_PATH_ENV, '=', optiPngPath);
-			if (!Deno.statSync(optiPngPath).isFile)
-				throw new Error(App.OPTI_PNG_PATH_ENV + ' is defined but not a file');
 			this.optiPngPath = optiPngPath;
 		}
 		if (!this.pngCrushPath.length && !this.optiPngPath.length)

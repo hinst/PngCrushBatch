@@ -1,5 +1,5 @@
 {
 	"tasks": {
-		"start": "deno run --env --allow-read=. --allow-env=PNG_CRUSH_PATH,OPTI_PNG_PATH,IGNORE_DIRECTORIES,LOW_PRIORITY_DIRECTORIES --allow-read=C:/App/PngCrush/pngcrush_1_8_11_w64.exe --allow-read=C:/App/optipng-0.7.8-win64/optipng.exe --allow-write=./cache.json --allow-write=./info.db --allow-write=./info.db-journal main.ts"
+		"start": "deno run --env --allow-read=. --allow-env=PNG_CRUSH_PATH,OPTI_PNG_PATH,IGNORE_DIRECTORIES,LOW_PRIORITY_DIRECTORIES --allow-run=C:/App/PngCrush/pngcrush_1_8_11_w64.exe,C:/App/optipng-0.7.8-win64/optipng.exe --allow-write=./info.db --allow-write=./info.db-journal main.ts"
 	}
 }
