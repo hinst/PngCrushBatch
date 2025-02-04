@@ -228,7 +228,7 @@ class App {
 		if (this.pngCrushPath.length)
 			return new Deno.Command(this.pngCrushPath, { args: ['-ow', filePath] }).outputSync();
 		if (this.optiPngPath.length)
-			return new Deno.Command(this.optiPngPath, { args: [filePath] }).outputSync();
+			return new Deno.Command(this.optiPngPath, { args: [filePath, '-fix'] }).outputSync();
 		throw new Error('Compressor path not found');
 	}
 }
